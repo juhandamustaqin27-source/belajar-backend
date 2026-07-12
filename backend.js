@@ -1,29 +1,44 @@
-require('dotenv').config(); //memanggil file .env agar bisa digunakan di file backend.js
+require('dotenv').config();
 
-const express = require('express');      //kode standar untuk menyalakan server express
-const mongoose = require('mongoose');   //kode untuk menghubungkan ke database MongoDB
-const produkRoutes = require('./routes/produkroutes'); // Semua permintaan yang diawali dengan alamat /produk (misal: /produk, /produk/:id) akan dilempar dan diurus oleh file produkroutes.js.
-const userroutes =require('./routes/userroutes'); 
+const express = require('express');
+const mongoose = require('mongoose');
+const produkRoutes = require('./routes/produkroutes');
+const userRoutes = require('./routes/userroutes');
 
-//Fungsi Express dijalankan dan hasilnya dimasukkan ke dalam variabel app. 
 const app = express();
-// memanggil middleware express.json() agar server bisa membaca data JSON yang dikirim dari client (misal: Thunder Client, Postman, atau aplikasi frontend). Tanpa ini, server tidak akan bisa membaca data JSON yang dikirim lewat body request.
 const port = process.env.PORT || 3000;
 
-app.use(express.json());        
+app.use(express.json());
 
+// FUNGSI SAKTI: Memastikan koneksi database awan aman sebelum rute dibuka
+const sambungDatabase = async () => {
+  if (mongoose.connection.readyState >= 1) return;
+  
+  const urlDatabase = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/belajar_backend';
+  try {
+    await mongoose.connect(urlDatabase, {
+      serverSelectionTimeoutMS: 5000 // Membatasi waktu tunggu agar tidak timeout
+    });
+    console.log('✅ Terhubung ke database MongoDB Atlas!');
+  } catch (err) {
+    console.error('❌ Gagal koneksi database:', err);
+  }
+};
 
-// mengubah url database MongoDB dari file .env menjadi variabel MONGO_URI
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ Berhasil terhubung ke database MongoDB!'))
-  .catch(err => console.error('❌ Gagal konek ke database:', err));
+// Pasang fungsi database sebagai middleware agar Vercel mendeteksinya setiap saat
+app.use(async (req, res, next) => {
+  await sambungDatabase();
+  next();
+});
 
-// Semua permintaan yang diawali dengan alamat /produk (misal: /produk, /produk/:id) akan dilempar dan diurus oleh file produkroutes.js.
 app.use('/produk', produkRoutes);
-app.use('/auth', userroutes);  
+app.use('/auth', userRoutes);
 
-// menjalankan server di port 3000
-    
+// Rute cadangan agar halaman beranda utama tidak memunculkan error 404
+app.get('/', (req, res) => {
+  res.send('🚀 Server Backend Utama Aktif!');
+});
+
 app.listen(port, () => {
-    console.log(`🚀 Server jalan di http://localhost:${port}`);
+    console.log(`🚀 Server jalan di port ${port}`);
 });
