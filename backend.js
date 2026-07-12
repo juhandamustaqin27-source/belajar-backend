@@ -39,6 +39,10 @@ app.get('/', (req, res) => {
   res.send('🚀 Server Backend Utama Aktif!');
 });
 
-app.listen(port, () => {
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
     console.log(`🚀 Server jalan di port ${port}`);
-});
+  });
+}
+
+module.exports = app;
